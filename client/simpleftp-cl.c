@@ -10,12 +10,12 @@ int main(int argc, char **argv) {
 		usage(argv[0]);
 	}
 	int client_fd = connect_socket(argv[1], argv[2]);
-	char data[6];
-	memset(data, 0, 6);
-	if (read(client_fd, data, 6) < 0) {
+	char buf[BUFSIZE];
+	memset(buf, 0, BUFSIZE);
+	if (read(client_fd, buf, BUFSIZE) < 0) {
 		ERR("write");
 	}
-	printf("%s\n", data);
+	printf("%s\n", buf);
 	if (close(client_fd) < 0) {
 		ERR("close");
 	} 

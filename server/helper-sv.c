@@ -54,3 +54,19 @@ int add_new_client(int sfd) {
 	}
 	return nfd;
 }
+
+/* calculate_max
+ * Calculate maximum nonzero file descriptor, for pselect call
+ * returns: max
+ */
+int calculate_max(int server_fd, int *client_fd) {
+	int max = server_fd;
+	for (int i = 0; i < MAXCL; i++) {
+		if (client_fd[i] != 0) {
+			max = client_fd[i] > max ? client_fd[i] : max;
+		}
+	}
+	return max;
+	
+}
+

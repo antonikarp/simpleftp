@@ -13,6 +13,11 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+/* BUFSIZE
+ * Size of buffer holding a TCP payload
+ */
+#define BUFSIZE 1000
+
 
 /* helper-cl.c */
 int make_socket(void);

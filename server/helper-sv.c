@@ -70,3 +70,35 @@ int calculate_max(int server_fd, int *client_fd) {
 	
 }
 
+/* set_handler
+ * Set a function as a handler for signal
+ * void (*f)(int) - pointer to function
+ * int sigNo - symbolic constant of a signal
+ * return: status
+ */
+int set_handler( void (*f)(int), int sigNo) {
+	struct sigaction act;
+	memset(&act, 0, sizeof(struct sigaction));
+	act.sa_handler = f;
+	if (-1 == sigaction(sigNo, &act, NULL)) {
+		return -1;
+	}
+	return 0;
+}
+
+/* close_all_connections
+ * After receiving SIGINT, close all connections
+ */
+void close_all_connections (int server_fd, int *client_fd) {
+	for (int i = 0; i < MAXCL; i++) {
+		if (client_fd[i] != 0) {
+			if (close(client_fd[i]) < 0) {
+				ERR("close");
+			}
+		}
+	}
+	if (close(server_fd) < 0) {
+		ERR("close");
+	}
+}
+

@@ -1,5 +1,10 @@
 #include "simpleftp-sv.h"
 
+volatile sig_atomic_t do_work = 1;
+
+void sigint_handler(int sig) {
+	do_work = 0;
+}
 
 void usage(char *name) {
 	fprintf(stderr, "USAGE: %s port workdir\n", name);
@@ -25,10 +30,16 @@ void runServer(int server_fd) {
 	fd_set base_rfds, rfds;
 	FD_ZERO(&base_rfds);
 	FD_SET(server_fd, &base_rfds);
-	for (;;) {
+	
+	sigset_t mask, oldmask;
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigprocmask(SIG_BLOCK, &mask, &oldmask);
+	
+	while(do_work) {
 		rfds = base_rfds;
 		fdmax = calculate_max(server_fd, client_fd);
-		if (select(fdmax + 1, &rfds, NULL, NULL, NULL) > 0) {
+		if (pselect(fdmax + 1, &rfds, NULL, NULL, NULL, &oldmask) > 0) {
 			if (FD_ISSET(server_fd, &rfds)) {
 				// Handle incoming connections.
 				new_client_fd = add_new_client(server_fd);
@@ -65,9 +76,16 @@ void runServer(int server_fd) {
 					client_fd[i] = 0;
 				}
 			}
-		}
+		} else {
+			if (errno == EINTR) {
+				continue;
+			} else {
+				ERR("pselect");
+			}
+		}	
 	}
-	
+	close_all_connections(server_fd, client_fd);
+
 }
 
 

@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <signal.h>
 
 /* BACKLOG
  * Limit the number of outstading connections in the socket's
@@ -36,6 +37,8 @@ int make_socket(int domain, int type);
 int bind_tcp_socket(uint16_t port);
 int add_new_client(int sfd);
 int calculate_max(int server_fd, int *client_fd);
+int set_handler( void (*f)(int), int sigNo);
+void close_all_connections (int server_fd, int *client_fd);
 
 
 /* simpleftp-sv.c */

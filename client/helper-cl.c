@@ -1,5 +1,9 @@
 #include "simpleftp-cl.h"
 
+/* make_socket
+ * Create a socket
+ * returns: socket descrriptor
+ */
 int make_socket(void) {
 	int sock;
 	sock = socket(PF_INET, SOCK_STREAM, 0);
@@ -7,6 +11,10 @@ int make_socket(void) {
 	return sock;
 }
 
+/* make_address
+ * Resolve the address given the domain name(name) and the port.
+ * returns: address
+ */
 struct sockaddr_in make_address(char *name, char *port) {
 	int ret;
 	struct sockaddr_in addr;
@@ -22,6 +30,11 @@ struct sockaddr_in make_address(char *name, char *port) {
 	return addr;
 }
 
+/* connect_socket
+ * Connect to TCP socket using the resolved address (from make_address)
+ * returns: socket descriptor
+ */
+
 int connect_socket(char *name, char *port) {
 	struct sockaddr_in addr;
 	int socketfd;
@@ -31,6 +44,7 @@ int connect_socket(char *name, char *port) {
 		if (errno != EINTR) {
 			ERR("connect");
 		} else {
+			/* Interrupted by signal - wait until the connection becomes operational */
 			fd_set wfds;
 			int status;
 			socklen_t size = sizeof(int);

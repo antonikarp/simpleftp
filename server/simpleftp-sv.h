@@ -24,6 +24,8 @@ int add_new_client(int sfd);
 
 
 /* simpleftp-sv.c */
+void usage(char *name);
+void runServer(int server_fd);
 
 
 #endif

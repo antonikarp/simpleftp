@@ -1,5 +1,10 @@
 #include "simpleftp-sv.h"
 
+/* make_socket
+ * Create a socket given domain and type
+ * returns: socket descriptor
+ */
+
 int make_socket(int domain, int type) {
 	int sock;
 	sock = socket(domain, type, 0);
@@ -8,6 +13,11 @@ int make_socket(int domain, int type) {
 	}
 	return sock;
 }
+
+/* bind_tcp_socket
+ * Bind TCP socket using given port on localhost
+ * returns: socket descriptor
+ */
 
 int bind_tcp_socket(uint16_t port) {
 	struct sockaddr_in addr;
@@ -29,6 +39,10 @@ int bind_tcp_socket(uint16_t port) {
 	}
 	return socketfd;
 }
+/* add_new_client
+ * Handle incoming connection to the bound socket (sfd)
+ * returns: new file descriptor
+ */
 
 int add_new_client(int sfd) {
 	int nfd;

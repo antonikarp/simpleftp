@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <signal.h>
 
 /* BUFSIZE
  * Size of buffer holding a TCP payload
@@ -23,10 +24,13 @@
 int make_socket(void);
 struct sockaddr_in make_address(char *name, char *port);
 int connect_socket(char *name, char *port);
+int set_handler( void (*f)(int), int sigNo);
 
 
 /* simpleftp-cl.c*/
-
+void sigint_handler(int sig);
+void communicate(int fd);
+void usage(char *name);
 
 
 

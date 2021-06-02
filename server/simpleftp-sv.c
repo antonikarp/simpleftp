@@ -74,6 +74,9 @@ void runServer(int server_fd) {
 					}
 					FD_CLR(client_fd[i], &base_rfds);
 					client_fd[i] = 0;
+				} else {
+					printf("%s\n", buf);
+					
 				}
 			}
 		} else {
@@ -90,6 +93,10 @@ void runServer(int server_fd) {
 
 
 int main(int argc, char **argv) {
+	if (set_handler(sigint_handler, SIGINT)) {
+		ERR("set_handler");
+	}
+	
 	if (argc != 3) {
 		usage(argv[0]);
 	}

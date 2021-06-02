@@ -44,6 +44,7 @@ void close_all_connections (int server_fd, int *client_fd);
 /* simpleftp-sv.c */
 void usage(char *name);
 void runServer(int server_fd);
+void sigint_handler(int sig);
 
 
 #endif

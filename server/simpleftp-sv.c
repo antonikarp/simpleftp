@@ -13,7 +13,7 @@ void usage(char *name) {
 
 
 
-void runServer(int server_fd) {
+void run_server(int server_fd, struct thread_arg *arg) {
 	char hello[] = "Hello";
 	char reject[] = "Rejected. Too many clients.";
 	
@@ -64,19 +64,18 @@ void runServer(int server_fd) {
 					// Find which client sent a message.
 					i++;
 				}
-				int result_read = read(client_fd[i], buf, BUFSIZE);
-				if (result_read < 0) {
-					ERR("read");
-				} else if (result_read == 0) {
-					// Handle disconnection.
-					if (close(client_fd[i]) < 0) {
-						ERR("close");
-					}
-					FD_CLR(client_fd[i], &base_rfds);
-					client_fd[i] = 0;
-				} else {
-					printf("%s\n", buf);
-					
+				
+				
+				if (pthread_mutex_lock(arg->new_request_mutex) != 0) {
+					ERR("pthread_mutex_lock");
+				}
+				*(arg->cur_client_fd) = client_fd[i];
+				*(arg->new_request_condition) = 1;
+				if (pthread_mutex_unlock(arg->new_request_mutex) != 0) {
+					ERR("pthread_cond_unlock");
+				}
+				if (pthread_cond_signal(arg->new_request_cond) != 0) {
+					ERR("pthread_cond_signal");
 				}
 			}
 		} else {
@@ -92,6 +91,57 @@ void runServer(int server_fd) {
 }
 
 
+void* thread_worker(void *void_arg) {
+	struct thread_arg *arg = (struct thread_arg *) void_arg;
+	char buf[BUFSIZE];
+	int cfd;
+	for (;;) {
+		while (!(*(arg->new_request_condition)) && do_work) {
+			if (pthread_cond_wait(arg->new_request_cond, arg->new_request_mutex) != 0) {
+				ERR("pthread_cond_wait");
+			}
+		}
+		
+		*(arg->new_request_condition) = 0;
+		if (!do_work) {
+			pthread_exit(NULL);
+		}
+		
+		cfd = *(arg->cur_client_fd);
+		if (pthread_mutex_unlock(arg->new_request_mutex) != 0) {
+			ERR("pthread_mutex_unlock");
+		}
+		read(cfd, buf, BUFSIZE);
+		char *hello = "Hello from a thread\n";
+		write(cfd, hello, strlen(hello) + 1);
+	}
+	
+	
+}
+
+void init_threads(pthread_t *threads, struct thread_arg *arg, struct thread_arg *args) {
+	for (int i = 0; i < MAXCL; i++) {
+		pthread_attr_t thread_attr;
+		if (pthread_attr_init(&thread_attr)) {
+			ERR("pthread_attr_init");
+		}
+		if (pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED)) {
+			ERR("pthread_attr_setdetachstate");
+		}
+		args[i].id = i;
+		args[i].cur_client_fd = arg->cur_client_fd;
+		args[i].new_request_condition = arg->new_request_condition;
+		args[i].new_request_cond = arg->new_request_cond;
+		args[i].new_request_mutex = arg->new_request_mutex;
+		if (pthread_create(&(threads[i]), &thread_attr, thread_worker, (void *) &args[i]) != 0) {
+			ERR("pthread_create");
+		}
+		pthread_attr_destroy(&thread_attr);
+	}
+	
+}
+
+
 int main(int argc, char **argv) {
 	if (set_handler(sigint_handler, SIGINT)) {
 		ERR("set_handler");
@@ -102,6 +152,29 @@ int main(int argc, char **argv) {
 	}
 	int16_t port = atoi(argv[1]);
 	int server_fd = bind_tcp_socket(port);
-	runServer(server_fd);
+	
+	struct thread_arg arg;
+	
+	int cur_client_fd;
+	arg.cur_client_fd = &cur_client_fd;
+	
+	pthread_cond_t new_request_cond = PTHREAD_COND_INITIALIZER;
+	arg.new_request_cond = &new_request_cond;
+	
+	pthread_mutex_t new_request_mutex = PTHREAD_MUTEX_INITIALIZER;
+	arg.new_request_mutex = &new_request_mutex;
+	
+	int new_request_condition = 0;
+	arg.new_request_condition = &new_request_condition;
+	
+	struct thread_arg *args = (struct thread_arg*) malloc(MAXCL * sizeof(struct thread_arg));
+	pthread_t *threads = (pthread_t *) malloc(MAXCL * sizeof(pthread_t)); 
+
+	init_threads(threads, &arg, args);
+	run_server(server_fd, &arg);
+	
+	free(args);
+	free(threads);
+	
 	return EXIT_SUCCESS;
 }

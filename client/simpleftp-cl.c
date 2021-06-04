@@ -23,6 +23,8 @@ void communicate(int fd) {
 			if (write(fd, (void *) buf, BUFSIZE) < 0) {
 				ERR("write");
 			}
+			read(fd, buf, BUFSIZE);
+			printf("%s\n", buf);
 		} else {
 			 if (errno == EINTR) {
 				 continue;

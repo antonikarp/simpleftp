@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <pthread.h>
 
 /* BACKLOG
  * Limit the number of outstading connections in the socket's
@@ -32,6 +33,15 @@
  */
 #define BUFSIZE 1000
 
+
+struct thread_arg {
+	int id;
+	int *cur_client_fd;
+	int *new_request_condition;
+	pthread_cond_t *new_request_cond;
+	pthread_mutex_t *new_request_mutex;
+};
+
 /* helper-sv.c */
 int make_socket(int domain, int type);
 int bind_tcp_socket(uint16_t port);
@@ -43,7 +53,7 @@ void close_all_connections (int server_fd, int *client_fd);
 
 /* simpleftp-sv.c */
 void usage(char *name);
-void runServer(int server_fd);
+void run_server(int server_fd, struct thread_arg *arg);
 void sigint_handler(int sig);
 
 

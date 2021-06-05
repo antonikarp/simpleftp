@@ -80,3 +80,23 @@ int set_handler( void (*f)(int), int sigNo) {
 	}
 	return 0;
 }
+
+/* persist_write
+ * Write |count| bytes from |buf| to |fd|.
+ * Persist if interrupted by a signal.
+ */
+ssize_t persist_write(int fd, char *buf, size_t count) {
+	int c;
+	size_t len = 0;
+	do {
+		c = TEMP_FAILURE_RETRY(write(fd, buf, count));
+		if(c < 0) {
+			return c;
+		}
+		buf += c;
+		len += c;
+		count -= c;
+	}
+	while (count > 0);
+	return len;
+}

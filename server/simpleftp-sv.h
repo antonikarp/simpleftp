@@ -49,7 +49,11 @@ int add_new_client(int sfd);
 int calculate_max(int server_fd, int *client_fd);
 int set_handler( void (*f)(int), int sigNo);
 void close_all_connections (int server_fd, int *client_fd);
+ssize_t persist_write(int fd, char *buf, size_t count);
 
+/* thread-sv.c */
+void* thread_worker(void *void_arg);
+void init_threads(pthread_t *threads, struct thread_arg *arg, struct thread_arg *args);
 
 /* simpleftp-sv.c */
 void usage(char *name);

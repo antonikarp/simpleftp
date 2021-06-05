@@ -20,10 +20,12 @@ void communicate(int fd) {
 			if (buf[strlen(buf) - 1] == '\n') {
 				buf[strlen(buf) - 1] = '\0';
 			}
-			if (write(fd, (void *) buf, BUFSIZE) < 0) {
+			if (persist_write(fd, (void *) buf, sizeof(buf) + 1) < 0) {
 				ERR("write");
 			}
-			read(fd, buf, BUFSIZE);
+			if (TEMP_FAILURE_RETRY(read(fd, buf, BUFSIZE)) < 0) {
+				ERR("read");
+			}
 			printf("%s\n", buf);
 		} else {
 			 if (errno == EINTR) {
@@ -48,8 +50,8 @@ int main(int argc, char **argv) {
 	int client_fd = connect_socket(argv[1], argv[2]);
 	char buf[BUFSIZE];
 	memset(buf, 0, BUFSIZE);
-	if (read(client_fd, buf, BUFSIZE) < 0) {
-		ERR("write");
+	if (TEMP_FAILURE_RETRY(read(client_fd, buf, BUFSIZE)) < 0) {
+		ERR("read");
 	}
 	printf("%s\n", buf);
 	communicate(client_fd);

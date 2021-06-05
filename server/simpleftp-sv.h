@@ -5,6 +5,8 @@
 #define ERR(source) (perror(source),\
 		     fprintf(stderr,"%s:%d\n",__FILE__,__LINE__),\
 		     exit(EXIT_FAILURE))
+
+#include "../common/common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -56,14 +58,10 @@ struct global_store {
 };
 
 /* helper-sv.c */
-int make_socket(int domain, int type);
 int bind_tcp_socket(uint16_t port);
 int add_new_client(int sfd);
 int calculate_max(int server_fd, int *client_fd);
-int set_handler( void (*f)(int), int sigNo);
 void close_all_connections (int server_fd, int *client_fd);
-ssize_t persist_write(int fd, char *buf, size_t count);
-ssize_t persist_read(int fd, char *buf, size_t count);
 
 /* thread-sv.c */
 void* thread_worker(void *void_arg);

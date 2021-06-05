@@ -5,6 +5,7 @@
 #define ERR(source) (perror(source),\
 		     fprintf(stderr,"%s:%d\n",__FILE__,__LINE__),\
 		     exit(EXIT_FAILURE))
+#include "../common/common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,13 +22,8 @@
 
 
 /* helper-cl.c */
-int make_socket(void);
 struct sockaddr_in make_address(char *name, char *port);
 int connect_socket(char *name, char *port);
-int set_handler( void (*f)(int), int sigNo);
-ssize_t persist_read(int fd, char *buf, size_t count);
-ssize_t persist_write(int fd, char *buf, size_t count);
-
 
 /* simpleftp-cl.c*/
 void sigint_handler(int sig);

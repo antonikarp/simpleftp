@@ -36,10 +36,23 @@
 
 struct thread_arg {
 	int id;
-	int *cur_client_fd;
-	int *new_request_condition;
-	pthread_cond_t *new_request_cond;
-	pthread_mutex_t *new_request_mutex;
+	int *ptr_cur_client_fd;
+	int *ptr_new_request_condition;
+	pthread_cond_t *ptr_new_request_cond;
+	pthread_mutex_t *ptr_new_request_mutex;
+};
+
+struct global_store {
+	
+	pthread_t *threads;
+	struct thread_arg *args;
+	
+	int cur_client_fd;
+	int new_request_condition;
+	pthread_cond_t new_request_cond;
+	pthread_mutex_t new_request_mutex;
+	
+	
 };
 
 /* helper-sv.c */
@@ -54,12 +67,14 @@ ssize_t persist_read(int fd, char *buf, size_t count);
 
 /* thread-sv.c */
 void* thread_worker(void *void_arg);
-void init_threads(pthread_t *threads, struct thread_arg *arg, struct thread_arg *args);
+void init_threads(struct global_store *store);
 
 /* simpleftp-sv.c */
 void usage(char *name);
-void run_server(int server_fd, struct thread_arg *arg);
+void run_server(int server_fd, struct global_store *store);
 void sigint_handler(int sig);
+void initialize_global_store (struct global_store *store);
+void deallocate_global_store(struct global_store *store);
 
 
 #endif

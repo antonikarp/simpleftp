@@ -11,13 +11,14 @@ void usage(char *name) {
 	exit(EXIT_FAILURE);
 }
 
-void run_server(int server_fd, struct thread_arg *arg) {
+void run_server(int server_fd, struct global_store *store) {
 	char hello[] = "Hello";
 	char reject[] = "Rejected. Too many clients.";
 	
-	// All invalid descriptors are stored as zeros.
+	
 	int client_fd[MAXCL];
-	memset(client_fd, 0, MAXCL * sizeof(int));
+	memset(client_fd, 0, MAXCL*sizeof(int));
+	// All invalid descriptors are stored as zeros.
 	
 	int new_client_fd;
 	int i;
@@ -64,15 +65,15 @@ void run_server(int server_fd, struct thread_arg *arg) {
 				}
 				
 				
-				if (pthread_mutex_lock(arg->new_request_mutex) != 0) {
+				if (pthread_mutex_lock(&(store->new_request_mutex)) != 0) {
 					ERR("pthread_mutex_lock");
 				}
-				*(arg->cur_client_fd) = client_fd[i];
-				*(arg->new_request_condition) = 1;
-				if (pthread_mutex_unlock(arg->new_request_mutex) != 0) {
+				store->cur_client_fd = client_fd[i];
+				store->new_request_condition = 1;
+				if (pthread_mutex_unlock(&(store->new_request_mutex)) != 0) {
 					ERR("pthread_cond_unlock");
 				}
-				if (pthread_cond_signal(arg->new_request_cond) != 0) {
+				if (pthread_cond_signal(&(store->new_request_cond)) != 0) {
 					ERR("pthread_cond_signal");
 				}
 			}
@@ -88,8 +89,23 @@ void run_server(int server_fd, struct thread_arg *arg) {
 
 }
 
+void initialize_global_store (struct global_store *store) {
+	memset(store, 0, sizeof(struct global_store));
+	pthread_cond_init(&(store->new_request_cond), NULL);
+	pthread_mutex_init(&(store->new_request_mutex), NULL);
+	// store->new_request_condition is initialized to 0
+	struct thread_arg *args = (struct thread_arg*) malloc(MAXCL * sizeof(struct thread_arg));
+	store->args = args;
+	pthread_t *threads = (pthread_t *) malloc(MAXCL * sizeof(pthread_t));
+	store->threads = threads;
+	
+	
+}
 
-
+void deallocate_global_store(struct global_store *store) {
+	free(store->args);
+	free(store->threads);
+}
 
 
 int main(int argc, char **argv) {
@@ -103,28 +119,14 @@ int main(int argc, char **argv) {
 	int16_t port = atoi(argv[1]);
 	int server_fd = bind_tcp_socket(port);
 	
-	struct thread_arg arg;
+	struct global_store store;
 	
-	int cur_client_fd;
-	arg.cur_client_fd = &cur_client_fd;
-	
-	pthread_cond_t new_request_cond = PTHREAD_COND_INITIALIZER;
-	arg.new_request_cond = &new_request_cond;
-	
-	pthread_mutex_t new_request_mutex = PTHREAD_MUTEX_INITIALIZER;
-	arg.new_request_mutex = &new_request_mutex;
-	
-	int new_request_condition = 0;
-	arg.new_request_condition = &new_request_condition;
-	
-	struct thread_arg *args = (struct thread_arg*) malloc(MAXCL * sizeof(struct thread_arg));
-	pthread_t *threads = (pthread_t *) malloc(MAXCL * sizeof(pthread_t)); 
+	initialize_global_store(&store);
 
-	init_threads(threads, &arg, args);
-	run_server(server_fd, &arg);
+	init_threads(&store);
+	run_server(server_fd, &store);
 	
-	free(args);
-	free(threads);
+	deallocate_global_store(&store);
 	
 	return EXIT_SUCCESS;
 }

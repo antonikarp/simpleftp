@@ -25,6 +25,7 @@ int make_socket(void);
 struct sockaddr_in make_address(char *name, char *port);
 int connect_socket(char *name, char *port);
 int set_handler( void (*f)(int), int sigNo);
+ssize_t persist_read(int fd, char *buf, size_t count);
 ssize_t persist_write(int fd, char *buf, size_t count);
 
 

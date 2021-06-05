@@ -50,6 +50,7 @@ int calculate_max(int server_fd, int *client_fd);
 int set_handler( void (*f)(int), int sigNo);
 void close_all_connections (int server_fd, int *client_fd);
 ssize_t persist_write(int fd, char *buf, size_t count);
+ssize_t persist_read(int fd, char *buf, size_t count);
 
 /* thread-sv.c */
 void* thread_worker(void *void_arg);

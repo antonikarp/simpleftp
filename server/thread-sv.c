@@ -25,7 +25,7 @@ void* thread_worker(void *void_arg) {
 		if (pthread_mutex_unlock(arg->new_request_mutex) != 0) {
 			ERR("pthread_mutex_unlock");
 		}
-		TEMP_FAILURE_RETRY(read(cfd, buf, BUFSIZE));
+		persist_read(cfd, buf, BUFSIZE);
 		char *hello = "Hello from a thread\n";
 		persist_write(cfd, hello, strlen(hello) + 1);
 	}

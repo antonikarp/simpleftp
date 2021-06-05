@@ -81,6 +81,18 @@ int set_handler( void (*f)(int), int sigNo) {
 	return 0;
 }
 
+/* persist_read
+ * Read up to |count| bytes from |fd| into |buf|.
+ * Persist if interrupted by a signal.
+ */
+ssize_t persist_read(int fd, char *buf, size_t count) {
+	ssize_t status;
+	if ( (status = TEMP_FAILURE_RETRY(read(fd, buf, count))) < 0) {
+		ERR("read");
+	}
+	return status;
+}
+
 /* persist_write
  * Write |count| bytes from |buf| to |fd|.
  * Persist if interrupted by a signal.
@@ -91,7 +103,7 @@ ssize_t persist_write(int fd, char *buf, size_t count) {
 	do {
 		c = TEMP_FAILURE_RETRY(write(fd, buf, count));
 		if(c < 0) {
-			return c;
+			ERR("write");
 		}
 		buf += c;
 		len += c;

@@ -29,7 +29,7 @@
  * Maximum number of simultaneous clients
  */
  
-#define MAXCL 1
+#define MAXCL 3
 
 /* BUFSIZE
  * Size of buffer holding a TCP payload
@@ -72,14 +72,15 @@ void close_all_connections (int server_fd, int *client_fd);
 
 /* thread-sv.c */
 void* thread_worker(void *void_arg);
-void init_threads(struct global_store *store);
+
 
 /* simpleftp-sv.c */
+void sigint_handler(int sig);
 void usage(char *name);
 void run_server(int server_fd, struct global_store *store);
-void sigint_handler(int sig);
 void initialize_global_store (struct global_store *store);
 void deallocate_global_store(struct global_store *store);
+void init_threads(struct global_store *store);
 
 
 #endif

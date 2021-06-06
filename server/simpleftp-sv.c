@@ -41,7 +41,6 @@ void run_server(int server_fd, struct global_store *store) {
 				while (i < MAXCL && store->client_fd[i] != 0) {
 					i++;
 				}
-
 				if (i < MAXCL) {
 					// New client can be added.
 					store->client_fd[i] = new_client_fd;
@@ -59,14 +58,11 @@ void run_server(int server_fd, struct global_store *store) {
 				}	
 			} else {
 				// Handle messages from the clients.
-				
 				i = 0;
 				while (i < MAXCL && store->client_fd[i] != 0 && !FD_ISSET(store->client_fd[i], &rfds)) {
 					// Find which client sent a message.
 					i++;
 				}
-				
-				
 				if (pthread_mutex_lock(&(store->new_request_mutex)) != 0) {
 					ERR("pthread_mutex_lock");
 				}
@@ -78,7 +74,11 @@ void run_server(int server_fd, struct global_store *store) {
 				if (pthread_cond_signal(&(store->new_request_cond)) != 0) {
 					ERR("pthread_cond_signal");
 				}
-				sem_wait(&(store->sem));
+				/* Wait for a thread to finish reading to prevent executing
+				 * this section of the code more than once */
+				if (sem_wait(&(store->sem)) != 0) {
+					ERR("sem_wait");
+				}
 			}
 		} else {
 			if (errno == EINTR) {
@@ -117,6 +117,32 @@ void deallocate_global_store(struct global_store *store) {
 	free(store->client_fd);
 }
 
+/* init_threads
+ * Intialize idle, detached threads.
+ */
+void init_threads(struct global_store *store) {
+	for (int i = 0; i < MAXCL; i++) {
+		pthread_attr_t thread_attr;
+		if (pthread_attr_init(&thread_attr)) {
+			ERR("pthread_attr_init");
+		}
+		if (pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED)) {
+			ERR("pthread_attr_setdetachstate");
+		}
+		store->args[i].id = i;
+		store->args[i].ptr_new_request_condition = &(store->new_request_condition);
+		store->args[i].ptr_new_request_cond = &(store->new_request_cond);
+		store->args[i].ptr_new_request_mutex = &(store->new_request_mutex);
+		store->args[i].ptr_cur_client_i = &(store->cur_client_i);
+		store->args[i].ptr_client_fd = store->client_fd;
+		store->args[i].ptr_base_rfds = &(store->base_rfds);
+		store->args[i].ptr_sem = &(store->sem);
+		if (pthread_create(&(store->threads[i]), &thread_attr, thread_worker, (void *) &(store->args[i])) != 0) {
+			ERR("pthread_create");
+		}
+		pthread_attr_destroy(&thread_attr);
+	}	
+}
 
 int main(int argc, char **argv) {
 	if (set_handler(sigint_handler, SIGINT)) {

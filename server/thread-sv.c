@@ -15,30 +15,34 @@ void* thread_worker(void *void_arg) {
 				ERR("pthread_cond_wait");
 			}
 		}
-		cfd = targ->ptr_client_fd[*(targ->ptr_cur_client_i)];
-		memset(buf, 0, BUFSIZE);
-		int read_bytes = persist_read(cfd, buf, BUFSIZE);
-		sem_post(targ->ptr_sem);
-		
-		*(targ->ptr_new_request_condition) = 0;
 		if (!do_work_server) {
 			pthread_exit(NULL);
 		}
+		cfd = targ->ptr_client_fd[*(targ->ptr_cur_client_i)];
+		memset(buf, 0, BUFSIZE);
+		int read_bytes = persist_read(cfd, buf, BUFSIZE);
 		
+		// Finished reading. Unlock the main thread.
+		if (sem_post(targ->ptr_sem) != 0) {
+			ERR("sem_post");
+		}
+		
+		*(targ->ptr_new_request_condition) = 0;
+		
+		// Handle disconnection.
 		if (read_bytes == 0) {
 			targ->ptr_client_fd[*(targ->ptr_cur_client_i)] = 0;
 			if (close(cfd) < 0) {
 				ERR("close");
 			}
 			FD_CLR(cfd, targ->ptr_base_rfds);
-			printf("closed\n");
 			
 		}
+		// At this point we no longer modify shared data.
 		if (pthread_mutex_unlock(targ->ptr_new_request_mutex) != 0) {
 			ERR("pthread_mutex_unlock");
 		}
 		if (read_bytes == 0) {
-			printf("disconnected\n");
 			continue;
 		}
 		
@@ -47,30 +51,4 @@ void* thread_worker(void *void_arg) {
 	}
 }
 
-/* init_threads
- * Intialize idle, detached threads.
- */
-void init_threads(struct global_store *store) {
-	for (int i = 0; i < MAXCL; i++) {
-		pthread_attr_t thread_attr;
-		if (pthread_attr_init(&thread_attr)) {
-			ERR("pthread_attr_init");
-		}
-		if (pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED)) {
-			ERR("pthread_attr_setdetachstate");
-		}
-		store->args[i].id = i;
-		store->args[i].ptr_new_request_condition = &(store->new_request_condition);
-		store->args[i].ptr_new_request_cond = &(store->new_request_cond);
-		store->args[i].ptr_new_request_mutex = &(store->new_request_mutex);
-		store->args[i].ptr_cur_client_i = &(store->cur_client_i);
-		store->args[i].ptr_client_fd = store->client_fd;
-		store->args[i].ptr_base_rfds = &(store->base_rfds);
-		store->args[i].ptr_sem = &(store->sem);
-		if (pthread_create(&(store->threads[i]), &thread_attr, thread_worker, (void *) &(store->args[i])) != 0) {
-			ERR("pthread_create");
-		}
-		pthread_attr_destroy(&thread_attr);
-	}
-	
-}
+

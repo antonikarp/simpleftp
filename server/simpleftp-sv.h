@@ -16,6 +16,7 @@
 #include <netinet/in.h>
 #include <signal.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 /* BACKLOG
  * Limit the number of outstading connections in the socket's
@@ -38,10 +39,13 @@
 
 struct thread_arg {
 	int id;
-	int *ptr_cur_client_fd;
 	int *ptr_new_request_condition;
 	pthread_cond_t *ptr_new_request_cond;
 	pthread_mutex_t *ptr_new_request_mutex;
+	int *ptr_client_fd;
+	int *ptr_cur_client_i;
+	fd_set *ptr_base_rfds;
+	sem_t *ptr_sem;
 };
 
 struct global_store {
@@ -49,12 +53,15 @@ struct global_store {
 	pthread_t *threads;
 	struct thread_arg *args;
 	
-	int cur_client_fd;
 	int new_request_condition;
 	pthread_cond_t new_request_cond;
 	pthread_mutex_t new_request_mutex;
 	
+	int *client_fd;
+	int cur_client_i;
+	fd_set base_rfds;
 	
+	sem_t sem;
 };
 
 /* helper-sv.c */
@@ -65,14 +72,15 @@ void close_all_connections (int server_fd, int *client_fd);
 
 /* thread-sv.c */
 void* thread_worker(void *void_arg);
-void init_threads(struct global_store *store);
+
 
 /* simpleftp-sv.c */
+void sigint_handler(int sig);
 void usage(char *name);
 void run_server(int server_fd, struct global_store *store);
-void sigint_handler(int sig);
 void initialize_global_store (struct global_store *store);
 void deallocate_global_store(struct global_store *store);
+void init_threads(struct global_store *store);
 
 
 #endif

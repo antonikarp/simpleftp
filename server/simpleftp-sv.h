@@ -16,6 +16,7 @@
 #include <netinet/in.h>
 #include <signal.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 /* BACKLOG
  * Limit the number of outstading connections in the socket's
@@ -28,7 +29,7 @@
  * Maximum number of simultaneous clients
  */
  
-#define MAXCL 3
+#define MAXCL 1
 
 /* BUFSIZE
  * Size of buffer holding a TCP payload
@@ -38,10 +39,13 @@
 
 struct thread_arg {
 	int id;
-	int *ptr_cur_client_fd;
 	int *ptr_new_request_condition;
 	pthread_cond_t *ptr_new_request_cond;
 	pthread_mutex_t *ptr_new_request_mutex;
+	int *ptr_client_fd;
+	int *ptr_cur_client_i;
+	fd_set *ptr_base_rfds;
+	sem_t *ptr_sem;
 };
 
 struct global_store {
@@ -49,12 +53,15 @@ struct global_store {
 	pthread_t *threads;
 	struct thread_arg *args;
 	
-	int cur_client_fd;
 	int new_request_condition;
 	pthread_cond_t new_request_cond;
 	pthread_mutex_t new_request_mutex;
 	
+	int *client_fd;
+	int cur_client_i;
+	fd_set base_rfds;
 	
+	sem_t sem;
 };
 
 /* helper-sv.c */

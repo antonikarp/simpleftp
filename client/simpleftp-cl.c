@@ -1,9 +1,9 @@
 #include "simpleftp-cl.h"
 
-volatile sig_atomic_t do_work = 1;
+volatile sig_atomic_t do_work_client = 1;
 
 void sigint_handler(int sig) {
-	do_work = 0;
+	do_work_client = 0;
 }
 	
 
@@ -14,13 +14,13 @@ void usage(char *name) {
 
 void communicate(int fd) {
 	char buf[BUFSIZE];
-	while (do_work) {
+	while (do_work_client) {
 		memset(buf, 0, BUFSIZE);
 		if (fgets(buf, BUFSIZE, stdin) > 0) {
 			if (buf[strlen(buf) - 1] == '\n') {
 				buf[strlen(buf) - 1] = '\0';
 			}
-			persist_write(fd, (void *) buf, sizeof(buf) + 1);
+			persist_write(fd, (void *) buf, sizeof(buf));
 			persist_read(fd, buf, BUFSIZE);
 			printf("%s\n", buf);
 		} else {
@@ -39,7 +39,9 @@ int main(int argc, char **argv) {
 	if (set_handler(sigint_handler, SIGINT)) {
 		ERR("set_handler");
 	}
-	
+	if (set_handler(SIG_IGN, SIGPIPE)) {
+		ERR("set_handler");
+	}
 	if (argc != 3) {
 		usage(argv[0]);
 	}

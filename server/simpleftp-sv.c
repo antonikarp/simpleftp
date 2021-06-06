@@ -1,9 +1,9 @@
 #include "simpleftp-sv.h"
 
-volatile sig_atomic_t do_work = 1;
+volatile sig_atomic_t do_work_server = 1;
 
 void sigint_handler(int sig) {
-	do_work = 0;
+	do_work_server = 0;
 }
 
 void usage(char *name) {
@@ -15,51 +15,53 @@ void run_server(int server_fd, struct global_store *store) {
 	char hello[] = "Hello";
 	char reject[] = "Rejected. Too many clients.";
 	
-	
-	int client_fd[MAXCL];
-	memset(client_fd, 0, MAXCL*sizeof(int));
-	// All invalid descriptors are stored as zeros.
-	
 	int new_client_fd;
 	int i;
 	char buf[BUFSIZE];
 	memset(buf, 0, BUFSIZE);
 	int fdmax;
 	
-	fd_set base_rfds, rfds;
-	FD_ZERO(&base_rfds);
-	FD_SET(server_fd, &base_rfds);
+	fd_set rfds;
+	FD_ZERO(&(store->base_rfds));
+	FD_SET(server_fd, &(store->base_rfds));
 	
 	sigset_t mask, oldmask;
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGINT);
 	sigprocmask(SIG_BLOCK, &mask, &oldmask);
 	
-	while(do_work) {
-		rfds = base_rfds;
-		fdmax = calculate_max(server_fd, client_fd);
+	while(do_work_server) {
+		rfds = store->base_rfds;
+		fdmax = calculate_max(server_fd, store->client_fd);
 		if (pselect(fdmax + 1, &rfds, NULL, NULL, NULL, &oldmask) > 0) {
 			if (FD_ISSET(server_fd, &rfds)) {
 				// Handle incoming connections.
 				new_client_fd = add_new_client(server_fd);
 				i = 0;
-				while (i < MAXCL && client_fd[i] != 0) {
+				while (i < MAXCL && store->client_fd[i] != 0) {
 					i++;
 				}
 
 				if (i < MAXCL) {
 					// New client can be added.
-					client_fd[i] = new_client_fd;
-					FD_SET(client_fd[i], &base_rfds);
-					persist_write(client_fd[i], hello, strlen(hello) + 1);
+					store->client_fd[i] = new_client_fd;
+					FD_SET(store->client_fd[i], &(store->base_rfds));
+					persist_write(store->client_fd[i], hello, strlen(hello) + 1);
 				} else {
 					// All connections are taken.
 					persist_write(new_client_fd, reject, strlen(reject) + 1);
+					if (shutdown(new_client_fd, SHUT_RDWR) < 0) {
+						ERR("shutdown");
+					}
+					if (close(new_client_fd) < 0) {
+						ERR("close");
+					}
 				}	
 			} else {
 				// Handle messages from the clients.
+				
 				i = 0;
-				while (i < MAXCL && client_fd[i] != 0 && !FD_ISSET(client_fd[i], &rfds)) {
+				while (i < MAXCL && store->client_fd[i] != 0 && !FD_ISSET(store->client_fd[i], &rfds)) {
 					// Find which client sent a message.
 					i++;
 				}
@@ -68,7 +70,7 @@ void run_server(int server_fd, struct global_store *store) {
 				if (pthread_mutex_lock(&(store->new_request_mutex)) != 0) {
 					ERR("pthread_mutex_lock");
 				}
-				store->cur_client_fd = client_fd[i];
+				store->cur_client_i = i;
 				store->new_request_condition = 1;
 				if (pthread_mutex_unlock(&(store->new_request_mutex)) != 0) {
 					ERR("pthread_cond_unlock");
@@ -76,6 +78,7 @@ void run_server(int server_fd, struct global_store *store) {
 				if (pthread_cond_signal(&(store->new_request_cond)) != 0) {
 					ERR("pthread_cond_signal");
 				}
+				sem_wait(&(store->sem));
 			}
 		} else {
 			if (errno == EINTR) {
@@ -85,7 +88,7 @@ void run_server(int server_fd, struct global_store *store) {
 			}
 		}	
 	}
-	close_all_connections(server_fd, client_fd);
+	close_all_connections(server_fd, store->client_fd);
 
 }
 
@@ -98,13 +101,20 @@ void initialize_global_store (struct global_store *store) {
 	store->args = args;
 	pthread_t *threads = (pthread_t *) malloc(MAXCL * sizeof(pthread_t));
 	store->threads = threads;
-	
+	int *client_fd = (int *) malloc(MAXCL * sizeof(int));
+	// All invalid descriptors are stored as zeros.
+	memset(client_fd, 0, MAXCL * sizeof(int));
+	store->client_fd = client_fd;
+	if (sem_init(&(store->sem), 0, 0) != 0) {
+		ERR("sem_init");
+	}
 	
 }
 
 void deallocate_global_store(struct global_store *store) {
 	free(store->args);
 	free(store->threads);
+	free(store->client_fd);
 }
 
 

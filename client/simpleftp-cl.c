@@ -21,7 +21,10 @@ void communicate(int fd) {
 				buf[strlen(buf) - 1] = '\0';
 			}
 			persist_write(fd, (void *) buf, sizeof(buf));
-			persist_read(fd, buf, BUFSIZE);
+			int bytes = persist_read(fd, buf, BUFSIZE);
+			if (bytes == 0) {
+				break;
+			}
 			printf("%s\n", buf);
 		} else {
 			 if (errno == EINTR) {
@@ -31,8 +34,10 @@ void communicate(int fd) {
 			}
 		}
 	}
-	printf("The client has been terminated.\n");
-	
+	if (close(fd) < 0) {
+		ERR("close");
+	}
+	printf("The client has been terminated.\n");	
 }
 
 int main(int argc, char **argv) {
@@ -51,8 +56,5 @@ int main(int argc, char **argv) {
 	persist_read(client_fd, buf, BUFSIZE);
 	printf("%s\n", buf);
 	communicate(client_fd);
-	if (close(client_fd) < 0) {
-		ERR("close");
-	} 
 	return EXIT_SUCCESS;
 }

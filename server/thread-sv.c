@@ -45,6 +45,21 @@ void* thread_worker(void *void_arg) {
 		if (read_bytes == 0) {
 			continue;
 		}
+		if (!strcmp(buf, "ls")) {
+			FILE* file = popen("ls", "r");
+			memset(buf, 0, BUFSIZE);
+			int offset = 0;
+			char intermediate[BUFSIZE];
+			memset(intermediate, 0, BUFSIZE);
+			while ( fscanf(file, "%s", intermediate) != EOF) {
+				intermediate[strlen(intermediate)] = '\n';
+				strncpy(buf + offset, intermediate, strlen(intermediate));
+				offset += strlen(intermediate);
+				memset(intermediate, 0, BUFSIZE);
+			} 
+			persist_write(cfd, buf, strlen(buf) + 1);
+			pclose(file);
+		}
 		
 		char *hello = "Hello from a thread\n";
 		persist_write(cfd, hello, strlen(hello) + 1);

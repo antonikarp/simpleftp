@@ -45,10 +45,36 @@ void* thread_worker(void *void_arg) {
 		if (read_bytes == 0) {
 			continue;
 		}
+		// Handle ls command
+		if (!strcmp(buf, "ls")) {
+			handle_ls(buf, cfd);
+		}
 		
 		char *hello = "Hello from a thread\n";
 		persist_write(cfd, hello, strlen(hello) + 1);
 	}
+}
+
+void handle_ls(char *buf, int cfd) {
+	FILE* file = popen("ls", "r");
+	if (!file) {
+		ERR("popen");
+	}
+	memset(buf, 0, BUFSIZE);
+	buf[0] = '\n';
+	int offset = 1;
+	char intermediate[BUFSIZE];
+	memset(intermediate, 0, BUFSIZE);
+	while ( fscanf(file, "%s", intermediate) != EOF) {
+		intermediate[strlen(intermediate)] = '\n';
+		strncpy(buf + offset, intermediate, strlen(intermediate));
+		offset += strlen(intermediate);
+		memset(intermediate, 0, BUFSIZE);
+	} 
+	persist_write(cfd, buf, strlen(buf) + 1);
+	if (pclose(file) == -1){
+		ERR("pclose");
+	}	
 }
 
 

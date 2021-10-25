@@ -152,6 +152,9 @@ int main(int argc, char **argv) {
 	if (argc != 3) {
 		usage(argv[0]);
 	}
+	if (chdir(argv[2]) != 0) {
+		ERR("chdir");
+	}
 	int16_t port = atoi(argv[1]);
 	int server_fd = bind_tcp_socket(port);
 	

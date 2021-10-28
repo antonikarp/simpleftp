@@ -49,7 +49,14 @@ void* thread_worker(void *void_arg) {
 		if (!strcmp(buf, "ls")) {
 			handle_ls(buf, cfd);
 		}
+		char *part1, *part2;
+		part1 = strtok(buf, " ");
+		part2 = buf + strlen(part1) + 1;
 		
+		if (!strcmp(part1, "get")) {
+			handle_get_sv(part2, cfd);
+		}
+
 		char *hello = "Hello from a thread\n";
 		persist_write(cfd, hello, strlen(hello) + 1);
 	}
@@ -75,6 +82,51 @@ void handle_ls(char *buf, int cfd) {
 	if (pclose(file) == -1){
 		ERR("pclose");
 	}	
+}
+
+void handle_get_sv(char *filename, int cfd) {
+	if (strlen(filename) == 0) {
+		return;
+	}
+	FILE* read_file = fopen(filename, "r+");
+	if (!read_file) {
+		ERR("fopen");
+	}
+	int end_condition = 0;
+	char buf[BUFSIZE];
+	char *size_ptr;
+	int buf_i = 3;
+	int16_t total_bytes = 0;
+	while (!end_condition) {
+		memset(buf, 0, BUFSIZE);
+		total_bytes = 0;
+		buf_i = 3;
+		while (total_bytes < BUFSIZE - 3 && !end_condition){
+			int read_bytes = fread(&buf[buf_i], 1, 1, read_file);
+			if (read_bytes != 1) {
+				end_condition = 1;
+			} else {
+				++buf_i;
+				++total_bytes;
+			}
+		}
+		size_ptr = (char *) &total_bytes;
+		buf[1] = size_ptr[0];
+		buf[2] = size_ptr[1];
+		if (!end_condition) {
+			buf[0] = '0';
+		} else {
+			buf[0] = '1';
+		}
+		/*for (int i = 0; i < total_bytes + 3; ++i) {
+			printf("%c", buf[i]);
+		}*/
+
+		persist_write(cfd, buf, total_bytes + 3);
+	}
+	if (fclose(read_file)) {
+		ERR("fclose");
+	}
 }
 
 

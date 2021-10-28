@@ -28,7 +28,8 @@ void communicate(int fd) {
 			part1 = strtok(buf, " ");
 			part2 = buf + strlen(part1) + 1;
 			if (!strcmp(part1, "get")) {
-				handle_get(part2);
+				handle_get_cl(fd, part2);
+				continue;
 			}
 			int bytes = persist_read(fd, buf, BUFSIZE);
 			if (bytes == 0) {
@@ -49,13 +50,29 @@ void communicate(int fd) {
 	printf("The client has been terminated.\n");	
 }
 
-void handle_get(char* filename) {
+void handle_get_cl(int fd, char* filename) {
 	if (strlen(filename) == 0) {
 		return;
 	}
 	FILE* new_file = fopen(filename, "w+");
 	if (!new_file) {
 		ERR("fopen");
+	}
+	int end_condition = 0;
+	char buf[BUFSIZE];
+	uint16_t size;
+	char size_char[2];
+	while (!end_condition) {
+		persist_read(fd, buf, BUFSIZE);
+		if (buf[0] == '1') {
+			end_condition = 1;
+		}
+		size_char[0] = buf[1];
+		size_char[1] = buf[2];
+		size = *(uint16_t *) size_char;
+		for(int i = 3; i < 3 + size; ++i) {
+			fwrite(&buf[i], 1, 1, new_file);
+		}
 	}
 	if (fclose(new_file)) {
 		ERR("fclose");

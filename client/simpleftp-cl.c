@@ -21,13 +21,22 @@ void communicate(int fd) {
 				buf[strlen(buf) - 1] = '\0';
 			}
 			persist_write(fd, (void *) buf, sizeof(buf));
+			if (strlen(buf) == 0) {
+				continue;
+			}
+			char *part1, *part2;
+			part1 = strtok(buf, " ");
+			part2 = buf + strlen(part1) + 1;
+			if (!strcmp(part1, "get")) {
+				handle_get(part2);
+			}
 			int bytes = persist_read(fd, buf, BUFSIZE);
 			if (bytes == 0) {
 				break;
 			}
 			printf("%s\n", buf);
 		} else {
-			 if (errno == EINTR) {
+			if (errno == EINTR) {
 				 continue;
 			} else {
 				ERR("fgets");
@@ -39,6 +48,20 @@ void communicate(int fd) {
 	}
 	printf("The client has been terminated.\n");	
 }
+
+void handle_get(char* filename) {
+	if (strlen(filename) == 0) {
+		return;
+	}
+	FILE* new_file = fopen(filename, "w+");
+	if (!new_file) {
+		ERR("fopen");
+	}
+	if (fclose(new_file)) {
+		ERR("fclose");
+	}
+}
+
 
 int main(int argc, char **argv) {
 	if (set_handler(sigint_handler, SIGINT)) {

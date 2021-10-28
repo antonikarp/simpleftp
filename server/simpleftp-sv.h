@@ -73,6 +73,7 @@ void close_all_connections (int server_fd, int *client_fd);
 /* thread-sv.c */
 void* thread_worker(void *void_arg);
 void handle_ls(char *buf, int cfd);
+void handle_get_sv(char *filename, int cfd);
 
 
 /* simpleftp-sv.c */

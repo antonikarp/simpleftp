@@ -28,6 +28,7 @@ int connect_socket(char *name, char *port);
 /* simpleftp-cl.c*/
 void sigint_handler(int sig);
 void communicate(int fd);
+void handle_get_cl(int fd, char* filename);
 void usage(char *name);
 
 

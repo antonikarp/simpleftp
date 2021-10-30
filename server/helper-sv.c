@@ -1,7 +1,6 @@
 #include "simpleftp-sv.h"
 
 
-
 /* bind_tcp_socket
  * Bind TCP socket using given port on localhost
  * returns: socket descriptor

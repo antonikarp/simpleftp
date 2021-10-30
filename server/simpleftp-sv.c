@@ -6,11 +6,18 @@ void sigint_handler(int sig) {
 	do_work_server = 0;
 }
 
+/* usage
+ * Print information if the command line arguments are incorrect.
+ */ 
 void usage(char *name) {
 	fprintf(stderr, "USAGE: %s port workdir\n", name);
 	exit(EXIT_FAILURE);
 }
 
+/* run_server
+ * Given the bound file descriptor |server_fd| and the global data
+ * object |store|, run the pselect in a loop.
+ */
 void run_server(int server_fd, struct global_store *store) {
 	char hello[] = "Hello";
 	char reject[] = "Rejected. Too many clients.";
@@ -92,18 +99,24 @@ void run_server(int server_fd, struct global_store *store) {
 
 }
 
+/* initialize_global_store
+ * Initialize all members of the global data object |store|.
+ */
 void initialize_global_store (struct global_store *store) {
+	// store->new_request_condition is initialized to 0
 	memset(store, 0, sizeof(struct global_store));
+	
 	pthread_cond_init(&(store->new_request_cond), NULL);
 	pthread_mutex_init(&(store->new_request_mutex), NULL);
-	// store->new_request_condition is initialized to 0
 	struct thread_arg *args = (struct thread_arg*) malloc(MAXCL * sizeof(struct thread_arg));
 	store->args = args;
 	pthread_t *threads = (pthread_t *) malloc(MAXCL * sizeof(pthread_t));
 	store->threads = threads;
 	int *client_fd = (int *) malloc(MAXCL * sizeof(int));
+	
 	// All invalid descriptors are stored as zeros.
 	memset(client_fd, 0, MAXCL * sizeof(int));
+	
 	store->client_fd = client_fd;
 	if (sem_init(&(store->sem), 0, 0) != 0) {
 		ERR("sem_init");

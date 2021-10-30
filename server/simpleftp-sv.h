@@ -39,6 +39,8 @@
 
 struct thread_arg {
 	int id;
+
+	// Pointers to object in the global store.
 	int *ptr_new_request_condition;
 	pthread_cond_t *ptr_new_request_cond;
 	pthread_mutex_t *ptr_new_request_mutex;
@@ -50,17 +52,25 @@ struct thread_arg {
 
 struct global_store {
 	
+	// Array of the spawned threads.
 	pthread_t *threads;
+
+	// Array of the argument structures passed to the threads.
 	struct thread_arg *args;
 	
+	// For condition variable.
 	int new_request_condition;
 	pthread_cond_t new_request_cond;
 	pthread_mutex_t new_request_mutex;
 	
+	// Array of all file descriptors for communicating with the clients.
 	int *client_fd;
 	int cur_client_i;
+
+	// Set of descriptors used in pselect call.
 	fd_set base_rfds;
 	
+	// Synchronization between main thread and the worker thread.
 	sem_t sem;
 };
 

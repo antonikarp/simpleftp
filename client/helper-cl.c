@@ -2,7 +2,7 @@
 
 
 /* make_address
- * Resolve the address given the domain name(name) and the port.
+ * Resolve the address given the domain name (|name|) and the |port|.
  * returns: address
  */
 struct sockaddr_in make_address(char *name, char *port) {

@@ -3,7 +3,7 @@
 extern volatile sig_atomic_t do_work_server;
 
 /* thread_worker
- * Each incoming request from a client is serviced by this function/
+ * Each incoming request from a client is serviced by this function
  */
 void* thread_worker(void *void_arg) {
 	struct thread_arg *targ = (struct thread_arg *) void_arg;
@@ -49,21 +49,30 @@ void* thread_worker(void *void_arg) {
 		if (!strcmp(buf, "ls")) {
 			handle_ls(buf, cfd);
 		}
+		
+		// Tokenize the command into two parts separated by a space
 		char *part1, *part2;
 		part1 = strtok(buf, " ");
+		if (!part1) {
+			continue;
+		}
 		part2 = buf + strlen(part1) + 1;
 		
+		// Handle get command
 		if (!strcmp(part1, "get")) {
 			handle_get_sv(part2, cfd);
 		}
-
-		char *hello = "Hello from a thread\n";
-		persist_write(cfd, hello, strlen(hello) + 1);
+		// Send a whitespace to be consumed by the client.
+		persist_write(cfd, " ", 2);
 	}
 }
-
+/* handle_ls
+ * List all file of the working directory and send the result to the client.
+ */
 void handle_ls(char *buf, int cfd) {
+	// Run ls command. The currecnt working directory has already been changed.
 	FILE* file = popen("ls", "r");
+	
 	if (!file) {
 		ERR("popen");
 	}
@@ -72,6 +81,8 @@ void handle_ls(char *buf, int cfd) {
 	int offset = 1;
 	char intermediate[BUFSIZE];
 	memset(intermediate, 0, BUFSIZE);
+	
+	// Append the results of the ls command line by line to the buffer.
 	while ( fscanf(file, "%s", intermediate) != EOF) {
 		intermediate[strlen(intermediate)] = '\n';
 		strncpy(buf + offset, intermediate, strlen(intermediate));
@@ -84,6 +95,9 @@ void handle_ls(char *buf, int cfd) {
 	}	
 }
 
+/* handle_get_sv
+ * Read the selected file and send its contents to the client.
+ */
 void handle_get_sv(char *filename, int cfd) {
 	if (strlen(filename) == 0) {
 		return;
@@ -114,13 +128,12 @@ void handle_get_sv(char *filename, int cfd) {
 		buf[1] = size_ptr[0];
 		buf[2] = size_ptr[1];
 		if (!end_condition) {
+			// This indicates that more packets are incoming.
 			buf[0] = '0';
 		} else {
+			// This indicates that this is the last packet.
 			buf[0] = '1';
 		}
-		/*for (int i = 0; i < total_bytes + 3; ++i) {
-			printf("%c", buf[i]);
-		}*/
 
 		persist_write(cfd, buf, total_bytes + 3);
 	}

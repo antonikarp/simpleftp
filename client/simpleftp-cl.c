@@ -6,12 +6,17 @@ void sigint_handler(int sig) {
 	do_work_client = 0;
 }
 	
-
+/* usage
+ * Print information if the command line arguments are incorrect.
+ */ 
 void usage(char *name) {
 	fprintf(stderr, "USAGE: %s domain port\n", name);
 	exit(EXIT_FAILURE);
 }
 
+/* communicate
+ * Given the file descriptor handle communication with the server
+ */
 void communicate(int fd) {
 	char buf[BUFSIZE];
 	while (do_work_client) {
@@ -24,14 +29,21 @@ void communicate(int fd) {
 			if (strlen(buf) == 0) {
 				continue;
 			}
+			
+			// Tokenize the command into two parts separated by a space.
 			char *part1, *part2;
 			part1 = strtok(buf, " ");
+			if (!part1) {
+				continue;
+			}
 			part2 = buf + strlen(part1) + 1;
+			
 			if (!strcmp(part1, "get")) {
 				handle_get_cl(fd, part2);
 				continue;
 			}
 			int bytes = persist_read(fd, buf, BUFSIZE);
+			// We have read 0 bytes, so the connection has been terminated.
 			if (bytes == 0) {
 				break;
 			}
@@ -49,7 +61,9 @@ void communicate(int fd) {
 	}
 	printf("The client has been terminated.\n");	
 }
-
+/* handle_get_cl
+ * Create a new file and handle incoming packets with the file data.
+ */
 void handle_get_cl(int fd, char* filename) {
 	if (strlen(filename) == 0) {
 		return;
@@ -65,12 +79,14 @@ void handle_get_cl(int fd, char* filename) {
 	while (!end_condition) {
 		persist_read(fd, buf, BUFSIZE);
 		if (buf[0] == '1') {
+			// This is the final packet.
 			end_condition = 1;
 		}
 		size_char[0] = buf[1];
 		size_char[1] = buf[2];
 		size = *(uint16_t *) size_char;
 		for(int i = 3; i < 3 + size; ++i) {
+			// Write received data to the new file byte by byte.
 			fwrite(&buf[i], 1, 1, new_file);
 		}
 	}
